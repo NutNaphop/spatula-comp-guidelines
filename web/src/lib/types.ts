@@ -3,7 +3,7 @@
  * Keep SCHEMA_VERSION in step with `config.SCHEMA_VERSION` on the pipeline
  * side: the app refuses to render an artifact it was not written for, rather
  * than misreading a newer layout. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface Meta {
   schema_version: number;
@@ -83,31 +83,35 @@ export interface Comp {
   };
 }
 
+export interface TagGroup {
+  id: string;
+  name: string;
+  tags: { id: string; name: string }[];
+}
+
 export interface Artifact {
   meta: Meta;
   heroes: Record<string, Hero>;
   items: Record<string, Item>;
   hexes: Record<string, Hex>;
   gods: Record<string, God>;
+  /** tag id -> localised title */
+  tags: Record<string, string>;
+  /** filter options, already trimmed to tags that comps actually use */
+  tag_groups: TagGroup[];
   comps: Comp[];
 }
 
 export const BOARD_ROWS = 4;
 export const BOARD_COLS = 7;
 
-/** TFT cost colours, indexed by champion cost. */
-export const COST_BORDER: Record<number, string> = {
-  0: "border-neutral-600",
-  1: "border-neutral-400",
-  2: "border-emerald-400",
-  3: "border-sky-400",
-  4: "border-fuchsia-400",
-  5: "border-amber-400",
-};
+/** The in-game rarity scale. Deliberately the only chroma in the interface. */
+export function costVar(cost: number): string {
+  const c = cost >= 1 && cost <= 5 ? cost : 0;
+  return `var(--color-cost-${c})`;
+}
 
-export const TIER_BG: Record<string, string> = {
-  S: "bg-rose-400",
-  A: "bg-orange-400",
-  B: "bg-sky-400",
-  C: "bg-neutral-400",
-};
+export function tierVar(tier: string | null): string {
+  const t = (tier ?? "C").toLowerCase();
+  return ["s", "a", "b", "c"].includes(t) ? `var(--color-tier-${t})` : "var(--color-tier-c)";
+}

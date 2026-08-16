@@ -1,8 +1,12 @@
 "use client";
 
-import { Artifact, Comp, COST_BORDER, TIER_BG } from "@/lib/types";
+import { Artifact, Comp, tierVar } from "@/lib/types";
 import { finalUnits } from "@/lib/comps";
+import { UnitHex } from "./UnitHex";
+import { PinButton } from "./PinButton";
 
+/** Tier is the card's spine, not a badge: it encodes rank, so it is
+ * structural rather than another coloured object competing with the units. */
 export function CompCard({
   comp,
   data,
@@ -21,69 +25,42 @@ export function CompCard({
       role="button"
       tabIndex={0}
       onClick={onOpen}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()}
-      className="flex w-full cursor-pointer flex-col gap-2 rounded-xl border border-neutral-800 bg-neutral-900 p-3 text-left active:bg-neutral-800"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="flex cursor-pointer gap-3 rounded-md bg-slate p-3 pl-0 transition-colors active:bg-edge"
     >
-      <div className="flex items-center gap-2">
-        <span
-          className={`grid h-6 w-6 flex-none place-items-center rounded-md text-[13px] font-bold text-neutral-900 ${
-            TIER_BG[comp.tier ?? "C"] ?? TIER_BG.C
-          }`}
-        >
-          {comp.tier ?? "-"}
-        </span>
-        <span className="min-w-0 flex-1 truncate font-semibold">{comp.name}</span>
-        <button
-          type="button"
-          aria-label={pinned ? "เอาหมุดออก" : "ปักหมุด"}
-          aria-pressed={pinned}
-          onClick={(e) => {
-            e.stopPropagation();
-            onTogglePin();
-          }}
-          className={`flex-none px-1 text-lg ${pinned ? "text-amber-300" : "text-neutral-600"}`}
-        >
-          ★
-        </button>
-      </div>
+      <span
+        aria-hidden
+        className="w-[3px] flex-none rounded-r-sm"
+        style={{ background: tierVar(comp.tier) }}
+      />
 
-      {comp.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {comp.tags.map((t) => (
-            <span
-              key={t}
-              className="rounded-full border border-neutral-800 px-2 py-px text-[11px] text-neutral-400"
-            >
-              {t}
-            </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="flex items-baseline gap-2">
+          <span className="label" style={{ color: tierVar(comp.tier) }}>
+            {comp.tier ?? "—"}
+          </span>
+          {/* not a heading: the card is a button, and 81 of them would bury
+              the detail view's own outline */}
+          <span className="min-w-0 flex-1 truncate font-semibold">{comp.name}</span>
+          <PinButton pinned={pinned} onClick={onTogglePin} />
+        </div>
+
+        <div className="flex flex-wrap gap-x-1">
+          {finalUnits(comp).map((u, i) => (
+            <UnitHex key={`${u.hero}-${i}`} unit={u} data={data} />
           ))}
         </div>
-      )}
 
-      <div className="flex flex-wrap gap-1">
-        {finalUnits(comp).map((u, i) => {
-          const hero = data.heroes[u.hero];
-          if (!hero) return null;
-          return (
-            <span key={`${u.hero}-${i}`} className="relative h-9 w-9 flex-none">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={hero.icon}
-                alt={hero.name}
-                title={`${hero.name} (${hero.cost})`}
-                loading="lazy"
-                className={`h-full w-full rounded-md border-2 object-cover ${
-                  COST_BORDER[hero.cost] ?? COST_BORDER[0]
-                }`}
-              />
-              {u.carry && (
-                <span className="absolute -top-1.5 -right-1 text-[11px] text-amber-300 drop-shadow-[0_0_3px_#000]">
-                  ★
-                </span>
-              )}
-            </span>
-          );
-        })}
+        {comp.tags.length > 0 && (
+          <p className="label truncate">
+            {comp.tags.map((t) => data.tags[t]).filter(Boolean).join(" · ")}
+          </p>
+        )}
       </div>
     </div>
   );

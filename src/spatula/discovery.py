@@ -130,6 +130,11 @@ def resolve(mode: str | None = None, client: httpx.Client | None = None) -> dict
         f"/lineupJson/m{season_num}/{config.LINEUP_CHANNEL}/{entry['mode']}"
         f"/lineup_detail_total.json"
     )
+    # Tag definitions are global: one file for every locale and patch, with
+    # the titles carried per language inside it.
+    sources["tag_grouped"] = (
+        "https://goldenspatula.com/act/jkxzlkJson/json/tagJson/tag_grouped.json"
+    )
 
     return {
         "mode": str(entry["mode"]),

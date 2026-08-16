@@ -1,23 +1,90 @@
 @import "tailwindcss";
 
-/* The app is dark-only on purpose: it is read next to a dark game screen,
-   usually in a narrow overlay or split-view pane. */
+/* Read in a narrow pane beside a dark game screen, in a 30-second gap between
+   rounds. Two rules follow from that:
+
+   1. The interface is almost colourless. The cost scale (grey/green/blue/
+      purple/gold) already means something to the player, so it is the only
+      saturated thing on screen and the eye goes straight to the expensive
+      units. Nothing else competes.
+   2. Gold is not a decorative accent - it is the 5-cost colour, reused to
+      mark pinned comps because "rarest, most valuable" already reads that
+      way to this audience. */
 @theme {
-  --font-sans: system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+  --color-ink: #0b0f16; /* page ground, cool near-black */
+  --color-slate: #141a24; /* card surface */
+  --color-edge: #1f2836; /* hairlines */
+  --color-chalk: #e8ecf3; /* primary text */
+  --color-mute: #7c8798; /* secondary text, labels */
+
+  --color-cost-0: #5c6474;
+  --color-cost-1: #8a93a3;
+  --color-cost-2: #3fbf77;
+  --color-cost-3: #38a3f5;
+  --color-cost-4: #b06beb;
+  --color-cost-5: #e8b33c;
+
+  --color-tier-s: #ff6f6f;
+  --color-tier-a: #f2a03d;
+  --color-tier-b: #56a8e0;
+  --color-tier-c: #7c8798;
+
+  --font-sans: var(--font-plex-thai), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
 html {
   color-scheme: dark;
+  background: var(--color-ink);
 }
 
 body {
   font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* hide the scrollbars on the horizontal filter rails */
-.overflow-x-auto {
+/* Small mono labels read as instrument markings rather than prose. */
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-mute);
+}
+
+/* The board's own geometry, reused at chip size so the list preview and the
+   board speak the same shape. */
+.hex {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+.rail {
   scrollbar-width: none;
 }
-.overflow-x-auto::-webkit-scrollbar {
+.rail::-webkit-scrollbar {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+.sheet {
+  animation: sheet-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-cost-5);
+  outline-offset: 2px;
 }

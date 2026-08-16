@@ -22,7 +22,8 @@ BASE_URL = "https://goldenspatula.com/"
 # Bumped whenever the published artifact changes shape. Clients compare against
 # this and refuse to render rather than misreading a newer layout.
 #   1 - initial: meta/heroes/items/hexes/gods/comps
-SCHEMA_VERSION = 1
+#   2 - comps.tags hold tag ids; added tags + tag_groups lookups
+SCHEMA_VERSION = 2
 
 # --- version coordinates -----------------------------------------------------
 # discovery.py reads the site's own versiondataconfig.js and derives the patch

@@ -48,6 +48,34 @@ def _split_ids(raw) -> list[str]:
     return out
 
 
+def build_tags(raw: dict) -> tuple[list[dict], dict[str, str]]:
+    """tag_grouped.json -> (groups for the filter UI, id -> localised title).
+
+    Titles are carried per language in the file; we publish the configured
+    locale and fall back to English so a missing translation shows something
+    readable instead of an empty chip.
+    """
+    groups, index = [], {}
+    for gid, group in (raw or {}).items():
+        titles = group.get("title") or {}
+        tags = []
+        for tag in group.get("tags") or []:
+            t = tag.get("title") or {}
+            name = t.get(config.LOCALE) or t.get("EN")
+            if not name:
+                continue
+            tid = str(tag["id"])
+            index[tid] = name
+            tags.append({"id": tid, "name": name})
+        if tags:
+            groups.append({
+                "id": str(gid),
+                "name": titles.get(config.LOCALE) or titles.get("EN") or "",
+                "tags": tags,
+            })
+    return groups, index
+
+
 def build() -> dict:
     chess = _load("chess")
     equip = _load("equip")
@@ -56,6 +84,7 @@ def build() -> dict:
     job = _load("job")["data"]
     gods = {str(g["godId"]): g for g in _load("god")["data"]}
     lineups = _load("lineup_detail_total")["lineup_list"]
+    tag_groups, tag_index = build_tags(_load("tag_grouped"))
 
     hero_tbl, item_tbl, hex_tbl = chess["data"], equip["data"], hexes["data"]
     missing = Counter()
@@ -181,10 +210,17 @@ def build() -> dict:
                 levels[str(level)] = board
 
         hb = detail.get("hexbuff") or {}
-        tags = [t.get("title")
+        # Reference tag ids, not the titles embedded in the comp: those are
+        # whatever language the editor happened to use (Chinese leaks in),
+        # while tag_grouped.json carries a proper per-locale title.
+        tags = [str(t["id"])
                 for grp in (detail.get("line_tag_group") or {}).values()
                 for t in (grp.get("tags") or [])
-                if t.get("title")]
+                if t.get("id") is not None]
+        for tid in tags:
+            if tid not in tag_index:
+                missing["tag"] += 1
+        tags = [t for t in tags if t in tag_index]
 
         comps.append({
             "id": entry.get("id"),
@@ -217,6 +253,12 @@ def build() -> dict:
     tier_rank = {"S": 0, "A": 1, "B": 2, "C": 3, "D": 4}
     comps.sort(key=lambda c: (tier_rank.get(c["tier"], 9), c["name"] or ""))
 
+    # drop filter options nothing actually uses
+    in_use = {t for c in comps for t in c["tags"]}
+    for g in tag_groups:
+        g["tags"] = [t for t in g["tags"] if t["id"] in in_use]
+    tag_groups = [g for g in tag_groups if g["tags"]]
+
     return {
         "meta": {
             "schema_version": config.SCHEMA_VERSION,
@@ -232,6 +274,8 @@ def build() -> dict:
         "items": used_items,
         "hexes": used_hexes,
         "gods": used_gods,
+        "tags": tag_index,
+        "tag_groups": tag_groups,
         "comps": comps,
         "_dangling": dict(missing),
     }
