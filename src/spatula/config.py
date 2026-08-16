@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
 RAW = DATA / "raw"        # bytes exactly as downloaded
 CLEAN = DATA / "clean"    # parsed + mojibake-fixed JSON
-WEB_DATA = ROOT / "web" / "data"   # published artifact, served as-is
+WEB_DATA = ROOT / "web" / "public" / "data"   # published artifact, served as-is
 DB_PATH = DATA / "tft.sqlite3"
 MANIFEST = RAW / "_manifest.json"   # etag / last-modified / hash per source
 

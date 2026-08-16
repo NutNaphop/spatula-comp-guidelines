@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* The app is dark-only on purpose: it is read next to a dark game screen,
+   usually in a narrow overlay or split-view pane. */
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* hide the scrollbars on the horizontal filter rails */
+.overflow-x-auto {
+  scrollbar-width: none;
+}
+.overflow-x-auto::-webkit-scrollbar {
+  display: none;
+}

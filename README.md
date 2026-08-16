@@ -6,7 +6,7 @@ artifact JSON ก้อนเดียวให้แอปฝั่ง client �
 ## สถาปัตยกรรม
 
 ```
-goldenspatula.com  →  fetch  →  clean  →  normalize  →  web/data/comps.json
+goldenspatula.com  →  fetch  →  clean  →  normalize  →  web/public/data/comps.json
                                                               ↓
                                           web UI / Android overlay / iOS Live Activity
 ```
@@ -25,8 +25,21 @@ python -m spatula.fetch && python -m spatula.clean && python -m spatula.normaliz
 | `python -m spatula.discovery` | ดู patch ปัจจุบัน + URL ทุกไฟล์ |
 | `python -m spatula.fetch` | โหลดไฟล์ดิบลง `data/raw/` |
 | `python -m spatula.clean` | แกะ JS wrapper + แก้ mojibake → `data/clean/` |
-| `python -m spatula.normalize` | join id + validate → `web/data/comps.json` |
+| `python -m spatula.normalize` | join id + validate → `web/public/data/comps.json` |
 | `python -m pytest tests -q` | เทสต์ |
+
+### web app
+
+```bash
+cd web && npm install && npm run dev     # พัฒนา
+cd web && npm run build                  # static export ออกที่ web/out/
+```
+
+Next.js (static export) + Tailwind + TypeScript — ไม่มี server ฝั่งหลังบ้าน
+type ของ artifact อยู่ที่ `web/src/lib/types.ts` และต้องแก้คู่กับ
+`config.SCHEMA_VERSION` เสมอ
+
+ถ้า deploy ใต้ sub-path ของ GitHub Pages ให้ตั้ง `NEXT_PUBLIC_BASE_PATH=/ชื่อ-repo`
 
 ## สัญญาของ artifact
 
