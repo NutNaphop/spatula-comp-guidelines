@@ -17,3 +17,6 @@ node_modules/
 web/out/
 web/.next/
 
+
+# per-machine Claude Code permissions, not shared
+.claude/settings.local.json
