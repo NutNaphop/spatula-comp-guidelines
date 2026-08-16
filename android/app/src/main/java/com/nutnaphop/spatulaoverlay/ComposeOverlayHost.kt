@@ -41,9 +41,19 @@ class ComposeOverlayHost(context: Context) :
 
     init {
         savedStateController.performRestore(null)
-        view.setViewTreeLifecycleOwner(this)
-        view.setViewTreeViewModelStoreOwner(this)
-        view.setViewTreeSavedStateRegistryOwner(this)
+        own(view)
+    }
+
+    /**
+     * Compose resolves the owners from the window's **root** view, not from
+     * the ComposeView. If the ComposeView is wrapped in anything before being
+     * handed to WindowManager, the wrapper is the root and has to carry them
+     * too - otherwise attaching throws "ViewTreeLifecycleOwner not found".
+     */
+    fun own(root: View) {
+        root.setViewTreeLifecycleOwner(this)
+        root.setViewTreeViewModelStoreOwner(this)
+        root.setViewTreeSavedStateRegistryOwner(this)
     }
 
     /** Attach content and move to RESUMED, which is when Compose starts drawing. */

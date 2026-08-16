@@ -48,6 +48,7 @@ class OverlayService : Service() {
 
     private var collapsedView: View? = null
     private var collapsedWeb: WebView? = null
+    private var collapsedFallback: ComposeOverlayHost? = null
     private lateinit var collapsedParams: WindowManager.LayoutParams
 
     private var panelHost: ComposeOverlayHost? = null
@@ -90,12 +91,59 @@ class OverlayService : Service() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun addCollapsed() {
-        val web = buildWebView(this).apply {
+        val web = buildWebView(this, wideViewport = false).apply {
             setBackgroundColor(0)
             addJavascriptInterface(HostBridge(::onTrackingChanged), HostBridge.NAME)
+            webViewClient = object : android.webkit.WebViewClient() {
+                private var failed = false
+
+                override fun onPageStarted(
+                    view: WebView,
+                    url: String,
+                    favicon: android.graphics.Bitmap?,
+                ) {
+                    failed = false
+                }
+
+                override fun onReceivedError(
+                    view: WebView,
+                    request: android.webkit.WebResourceRequest,
+                    error: android.webkit.WebResourceError,
+                ) {
+                    // only the page itself matters; a missing image should
+                    // not blank the whole strip
+                    if (request.isForMainFrame) failed = true
+                }
+
+                // a 404 arrives with a perfectly valid body, so it never
+                // reaches onReceivedError - without this the strip would show
+                // the host's error page instead of falling back
+                override fun onReceivedHttpError(
+                    view: WebView,
+                    request: android.webkit.WebResourceRequest,
+                    errorResponse: android.webkit.WebResourceResponse,
+                ) {
+                    if (request.isForMainFrame) failed = true
+                }
+
+                // fires after onReceivedError, and for the error page too, so
+                // it has to consult the flag rather than assume success
+                override fun onPageFinished(view: WebView, url: String) {
+                    view.visibility = if (failed) View.INVISIBLE else View.VISIBLE
+                }
+            }
+            visibility = View.INVISIBLE
             loadUrl(Config.MINI_URL)
         }
         collapsedWeb = web
+
+        // Drawn underneath the WebView so a failed load still leaves
+        // something to tap. The collapsed window is the one part that has to
+        // survive with no network, which is exactly when the page will not
+        // load, so it cannot be web all the way down.
+        val fallback = ComposeOverlayHost(this)
+        fallback.setContent { SpatulaTheme { Dot() } }
+        collapsedFallback = fallback
 
         // A transparent lid over the WebView: the strip is read, never
         // tapped, so the window consumes every touch itself and turns it into
@@ -104,9 +152,13 @@ class OverlayService : Service() {
         lid.setOnTouchListener(DragListener())
 
         val container = FrameLayout(this).apply {
+            addView(fallback.view, FrameLayout.LayoutParams(MATCH, MATCH))
             addView(web, FrameLayout.LayoutParams(MATCH, MATCH))
             addView(lid, FrameLayout.LayoutParams(MATCH, MATCH))
         }
+        // the container is the window root, so it is what Compose reads the
+        // lifecycle owners from
+        fallback.own(container)
         collapsedView = container
 
         collapsedParams = baseParams().apply {
@@ -122,8 +174,10 @@ class OverlayService : Service() {
     private fun removeCollapsed() {
         collapsedView?.let { runCatching { windowManager.removeView(it) } }
         collapsedWeb?.destroy()
+        collapsedFallback?.destroy()
         collapsedView = null
         collapsedWeb = null
+        collapsedFallback = null
     }
 
     /** A dot when nothing is tracked, a strip when something is. */

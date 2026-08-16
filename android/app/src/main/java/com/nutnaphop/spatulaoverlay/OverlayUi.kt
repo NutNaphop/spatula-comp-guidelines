@@ -4,6 +4,10 @@ import android.annotation.SuppressLint
 import android.webkit.CookieManager
 import android.webkit.WebView
 import androidx.compose.foundation.background
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -89,21 +93,53 @@ private fun Glyph(painter: Painter, descriptionRes: Int) {
     )
 }
 
-/** Built here rather than in a composable so the service can keep one
- * instance alive across recompositions and destroy it deliberately. */
+/**
+ * Built here rather than in a composable so the service can keep one instance
+ * alive across recompositions and destroy it deliberately.
+ *
+ * [wideViewport] must be off for the collapsed strip. With it on the page is
+ * laid out at ~980 CSS px and scaled down to fit, which in a 52dp window
+ * renders everything too small to see - the strip has to lay out at the
+ * window's real size instead.
+ */
 @SuppressLint("SetJavaScriptEnabled")
-fun buildWebView(context: android.content.Context): WebView = WebView(context).apply {
+fun buildWebView(
+    context: android.content.Context,
+    wideViewport: Boolean = true,
+): WebView = WebView(context).apply {
     settings.javaScriptEnabled = true
     // the pinned list is localStorage - without this it silently forgets
     // every comp the moment the panel closes
     settings.domStorageEnabled = true
-    settings.textZoom = Config.TEXT_ZOOM
-    settings.useWideViewPort = true
-    settings.loadWithOverviewMode = true
-    settings.setSupportZoom(true)
-    settings.builtInZoomControls = true
+    settings.useWideViewPort = wideViewport
+    settings.loadWithOverviewMode = wideViewport
+    settings.setSupportZoom(wideViewport)
+    settings.builtInZoomControls = wideViewport
     settings.displayZoomControls = false
+    settings.textZoom = if (wideViewport) Config.TEXT_ZOOM else 100
     settings.mediaPlaybackRequiresUserGesture = true
     CookieManager.getInstance().setAcceptCookie(true)
     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+}
+
+/** Shown under the collapsed strip so the overlay is never an empty box:
+ * the one moment the page cannot load is the one moment the user most needs
+ * something to tap. */
+@Composable
+fun Dot() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .background(Palette.Gold, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(R.string.bubble_glyph),
+                color = Palette.Ink,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
 }
