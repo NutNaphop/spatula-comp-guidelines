@@ -18,7 +18,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.WebView
-import android.widget.FrameLayout
+import androidx.compose.runtime.mutableStateOf
 import kotlin.math.abs
 
 /**
@@ -33,21 +33,22 @@ import kotlin.math.abs
  *    A non-focusable window never receives key events, so leaving it set
  *    would make the search box impossible to type into; leaving it clear
  *    would steal the keyboard and the back button from the game.
+ *
+ * The UI is Compose, hosted by [ComposeOverlayHost] because a Service cannot
+ * supply the lifecycle owners Compose expects to find in the view tree.
  */
 class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
     private lateinit var prefs: SharedPreferences
 
-    private lateinit var bubble: View
-    private lateinit var panel: View
-    private lateinit var webView: WebView
+    private lateinit var bubbleHost: ComposeOverlayHost
+    private var panelHost: ComposeOverlayHost? = null
+    private var webView: WebView? = null
 
     private lateinit var bubbleParams: WindowManager.LayoutParams
-    private lateinit var panelParams: WindowManager.LayoutParams
 
-    private var expanded = false
-    private var mode = Mode.PINNED
+    private val mode = mutableStateOf(Mode.PINNED)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -55,8 +56,9 @@ class OverlayService : Service() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         prefs = getSharedPreferences(Config.PREFS, Context.MODE_PRIVATE)
-        mode = runCatching { Mode.valueOf(prefs.getString(Config.KEY_MODE, null) ?: "") }
-            .getOrDefault(Mode.PINNED)
+        mode.value = runCatching {
+            Mode.valueOf(prefs.getString(Config.KEY_MODE, null) ?: "")
+        }.getOrDefault(Mode.PINNED)
 
         startForeground(NOTIFICATION_ID, buildNotification())
         addBubble()
@@ -73,30 +75,36 @@ class OverlayService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         CookieManager.getInstance().flush()
-        if (::bubble.isInitialized) runCatching { windowManager.removeView(bubble) }
-        if (expanded && ::panel.isInitialized) runCatching { windowManager.removeView(panel) }
-        if (::webView.isInitialized) webView.destroy()
+        collapse()
+        if (::bubbleHost.isInitialized) {
+            runCatching { windowManager.removeView(bubbleHost.view) }
+            bubbleHost.destroy()
+        }
     }
 
     // ---------------------------------------------------------------- bubble
 
     private fun addBubble() {
-        bubble = View.inflate(this, R.layout.bubble, null)
+        bubbleHost = ComposeOverlayHost(this)
+        val view = bubbleHost.setContent { SpatulaTheme { Bubble() } }
+        view.setOnTouchListener(DragListener())
+
+        // Explicit square size, not WRAP_CONTENT: the window has to carry the
+        // size, or the round background renders as a sliver.
+        val size = resources.getDimensionPixelSize(R.dimen.bubble_size)
 
         bubbleParams = baseParams().apply {
-            width = WindowManager.LayoutParams.WRAP_CONTENT
-            height = WindowManager.LayoutParams.WRAP_CONTENT
+            width = size
+            height = size
             gravity = Gravity.TOP or Gravity.START
             x = prefs.getInt(Config.KEY_BUBBLE_X, 0)
             y = prefs.getInt(Config.KEY_BUBBLE_Y, 240)
             flags = flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         }
-
-        bubble.setOnTouchListener(DragListener())
-        windowManager.addView(bubble, bubbleParams)
+        windowManager.addView(view, bubbleParams)
     }
 
-    /** Distinguishes a tap from a drag, and keeps the bubble on screen. */
+    /** Distinguishes a tap from a drag, and remembers where it was left. */
     private inner class DragListener : View.OnTouchListener {
         private var startX = 0
         private var startY = 0
@@ -116,7 +124,7 @@ class OverlayService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     bubbleParams.x = startX + (event.rawX - touchX).toInt()
                     bubbleParams.y = startY + (event.rawY - touchY).toInt()
-                    windowManager.updateViewLayout(bubble, bubbleParams)
+                    windowManager.updateViewLayout(bubbleHost.view, bubbleParams)
                     return true
                 }
                 MotionEvent.ACTION_UP -> {
@@ -141,33 +149,33 @@ class OverlayService : Service() {
     // ----------------------------------------------------------------- panel
 
     private fun expand() {
-        if (expanded) return
-        expanded = true
+        if (panelHost != null) return
 
-        panel = View.inflate(this, R.layout.panel, null)
-        webView = panel.findViewById(R.id.web)
-        setUpWebView(webView)
+        val web = buildWebView(this).also { webView = it }
+        web.loadUrl(mode.value.url)
 
-        panel.findViewById<View>(R.id.close).setOnClickListener { collapse() }
-        panel.findViewById<View>(R.id.back).setOnClickListener {
-            if (webView.canGoBack()) webView.goBack()
+        val host = ComposeOverlayHost(this)
+        val view = host.setContent {
+            SpatulaTheme {
+                Panel(
+                    modeLabel = mode.value.label,
+                    webView = web,
+                    onToggleMode = {
+                        mode.value =
+                            if (mode.value == Mode.PINNED) Mode.OFFICIAL else Mode.PINNED
+                        prefs.edit().putString(Config.KEY_MODE, mode.value.name).apply()
+                        web.loadUrl(mode.value.url)
+                    },
+                    onBack = { if (web.canGoBack()) web.goBack() },
+                    onClose = { collapse() },
+                )
+            }
         }
+        panelHost = host
 
-        val modeButton = panel.findViewById<android.widget.TextView>(R.id.mode)
-        fun renderMode() {
-            modeButton.text = mode.label
-            webView.loadUrl(mode.url)
-        }
-        modeButton.setOnClickListener {
-            mode = if (mode == Mode.PINNED) Mode.OFFICIAL else Mode.PINNED
-            prefs.edit().putString(Config.KEY_MODE, mode.name).apply()
-            renderMode()
-        }
-
-        panelParams = baseParams().apply {
+        val params = baseParams().apply {
             width = WindowManager.LayoutParams.MATCH_PARENT
-            height = prefs.getInt(Config.KEY_PANEL_H, 0).takeIf { it > 0 }
-                ?: WindowManager.LayoutParams.MATCH_PARENT
+            height = WindowManager.LayoutParams.MATCH_PARENT
             gravity = Gravity.TOP or Gravity.START
             // focusable: the search box and any login form need a keyboard.
             // ADJUST_RESIZE is deprecated for activities in favour of the
@@ -178,38 +186,19 @@ class OverlayService : Service() {
             softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
         }
 
-        windowManager.addView(panel, panelParams)
-        bubble.visibility = View.GONE
-        renderMode()
+        windowManager.addView(view, params)
+        bubbleHost.view.visibility = View.GONE
     }
 
     private fun collapse() {
-        if (!expanded) return
-        expanded = false
+        val host = panelHost ?: return
+        panelHost = null
         CookieManager.getInstance().flush()
-        runCatching { windowManager.removeView(panel) }
-        webView.destroy()
-        bubble.visibility = View.VISIBLE
-    }
-
-    private fun setUpWebView(web: WebView) {
-        web.settings.apply {
-            javaScriptEnabled = true
-            // the pinned list is localStorage - without this it silently
-            // forgets every comp the moment the panel closes
-            domStorageEnabled = true
-            textZoom = Config.TEXT_ZOOM
-            useWideViewPort = true
-            loadWithOverviewMode = true
-            setSupportZoom(true)
-            builtInZoomControls = true
-            displayZoomControls = false
-            mediaPlaybackRequiresUserGesture = true
-        }
-        CookieManager.getInstance().apply {
-            setAcceptCookie(true)
-            setAcceptThirdPartyCookies(web, true)
-        }
+        runCatching { windowManager.removeView(host.view) }
+        host.destroy()
+        webView?.destroy()
+        webView = null
+        if (::bubbleHost.isInitialized) bubbleHost.view.visibility = View.VISIBLE
     }
 
     // ----------------------------------------------------------------- glue

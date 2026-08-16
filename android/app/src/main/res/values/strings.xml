@@ -14,6 +14,6 @@
 
     <string name="bubble_glyph">S</string>
     <string name="bubble_description">เปิดรายการคอมพ์</string>
-    <string name="back_arrow">‹</string>
-    <string name="close_glyph">✕</string>
+    <string name="back">ย้อนกลับ</string>
+    <string name="close">ปิดหน้าต่าง</string>
 </resources>

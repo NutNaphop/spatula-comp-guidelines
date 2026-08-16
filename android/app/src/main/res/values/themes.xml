@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SpatulaOverlay" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <!-- Only used for the window before Compose draws, so it just needs to be
+         the right colour. The app's real theme is SpatulaTheme in Kotlin.
+         Parent is a platform theme, not AppCompat: nothing here uses
+         AppCompat any more. -->
+    <style name="Theme.SpatulaOverlay" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:colorBackground">#0B0F16</item>
+        <item name="android:windowBackground">#0B0F16</item>
         <item name="android:textColorPrimary">#E8ECF3</item>
     </style>
 </resources>

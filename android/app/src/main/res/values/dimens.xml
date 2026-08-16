@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The bubble window is sized from here rather than from the composable:
+         WindowManager needs a concrete size, and a WRAP_CONTENT window would
+         collapse the round background into a sliver. -->
+    <dimen name="bubble_size">52dp</dimen>
+</resources>
