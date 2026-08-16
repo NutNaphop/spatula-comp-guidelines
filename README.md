@@ -26,12 +26,14 @@ python -m spatula.fetch && python -m spatula.clean && python -m spatula.normaliz
 | `python -m spatula.fetch` | โหลดไฟล์ดิบลง `data/raw/` |
 | `python -m spatula.clean` | แกะ JS wrapper + แก้ mojibake → `data/clean/` |
 | `python -m spatula.normalize` | join id + validate → `web/public/data/comps.json` |
-| `python -m pytest tests -q` | เทสต์ |
+| `python -m spatula.build_db` | โหลด artifact ลง SQLite ไว้ query วิเคราะห์ |
+| `python -m pytest tests -q` | เทสต์ (54 ตัว) |
 
 ### web app
 
 ```bash
 cd web && npm install && npm run dev     # พัฒนา
+cd web && npm test                       # เทสต์ (29 ตัว)
 cd web && npm run build                  # static export ออกที่ web/out/
 ```
 
@@ -101,9 +103,33 @@ type ของ artifact อยู่ที่ `web/src/lib/types.ts` และ�
 - ref ที่แมปไม่ได้เกิน 5% → fail (ต่ำกว่านั้นแค่เตือน)
 - comp ที่ไม่มียูนิตเลย / `meta.version` ว่าง → fail
 
+## อัตโนมัติ (GitHub Actions)
+
+| workflow | ทำอะไร |
+|---|---|
+| `refresh.yml` | วันละครั้ง ดึงข้อมูล → validate → commit `comps.json` ถ้าเปลี่ยนจริง |
+| `deploy.yml` | push ที่แตะ `web/` → เทสต์ + lint + build → deploy ขึ้น Pages |
+
+ต้องตั้งค่าครั้งเดียวที่ repo settings: **Pages → Source: GitHub Actions**
+
+`refresh.yml` รันเทสต์ก่อนแตะข้อมูล และ `normalize` จะ exit non-zero ถ้า artifact
+ผิดรูป — ข้อมูลเสียจึงไม่มีทางถูก commit เงียบๆ ส่วน commit จะเกิดเฉพาะตอนไฟล์
+เปลี่ยนจริง (ปีละไม่กี่ครั้งตาม patch) ประวัติ git จึงกลายเป็น archive ข้าม patch
+
+## วิเคราะห์ด้วย SQLite
+
+```bash
+python -m spatula.build_db
+sqlite3 data/tft.sqlite3 "SELECT * FROM hero_usage LIMIT 10"
+```
+
+สร้างใหม่ทุกครั้งจาก `comps.json` (ไม่ใช่ของที่แอปใช้ — แอปอ่าน JSON) มี view
+สำเร็จรูป 2 อัน: `hero_usage` (แชมป์ไหนถูกใช้บ่อย/เป็น carry บ่อย) และ
+`carry_items` (ไอเทมที่ลงตัว carry จริง)
+
 ## ยังไม่ได้ทำ
 
-- web UI (`web/`)
-- Android overlay / iOS Live Activity (แยก repo)
-- SQLite สำหรับ query วิเคราะห์เอง
-- ตั้ง schedule ดึงอัตโนมัติ
+- Android overlay (แยก repo — WebView ชี้มาที่ URL ที่ deploy ไว้)
+- iOS Live Activity (แยก repo — ต้องเขียน SwiftUI, ใช้ Flutter/เว็บไม่ได้)
+- **ยังไม่เคยยืนยันว่า service worker / offline ทำงานจริง** — เบราว์เซอร์ที่ใช้
+  ทดสอบบล็อกการ register ต้องลองบนเครื่องจริง

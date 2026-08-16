@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Artifact, Comp, costVar, tierVar } from "@/lib/types";
 import { displayOrder, sortedLevels } from "@/lib/comps";
 import { Board } from "./Board";
@@ -22,8 +22,6 @@ export function CompDetail({
   const levels = sortedLevels(comp);
   const [level, setLevel] = useState(String(comp.final_level));
   const units = comp.levels[level] ?? [];
-
-  useEffect(() => setLevel(String(comp.final_level)), [comp]);
 
   const notes = (
     [

@@ -1,0 +1,55 @@
+name: Refresh comp data
+
+# Comps change when a patch ships, not hourly, so once a day is plenty and
+# stays polite to the source. fetch.py additionally refuses to re-download a
+# file more often than its cooldown, and uses conditional GETs, so a run that
+# finds nothing new costs a handful of 304s.
+on:
+  schedule:
+    - cron: "20 4 * * *" # 11:20 ICT daily
+  workflow_dispatch: # manual run, e.g. right after a patch drops
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -e .
+
+      - name: Run the test suite before touching data
+        run: |
+          pip install pytest
+          python -m pytest tests -q
+
+      - name: Fetch, clean, normalize
+        run: |
+          python -m spatula.fetch --force
+          python -m spatula.clean
+          python -m spatula.normalize
+
+      # normalize exits non-zero if the artifact looks broken, so reaching
+      # this step means the data passed validation.
+      - name: Commit the artifact if it changed
+        run: |
+          if git diff --quiet -- web/public/data/comps.json; then
+            echo "no change"
+            exit 0
+          fi
+          version=$(python -c "import json,pathlib; print(json.loads(pathlib.Path('web/public/data/comps.json').read_text(encoding='utf-8'))['meta']['version'])")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/public/data/comps.json
+          git commit -m "Update comp data to $version"
+          git push

@@ -36,7 +36,7 @@ export function matchesQuery(comp: Comp, query: string, data: Artifact): boolean
 export function applyFilters(
   data: Artifact,
   state: FilterState,
-  pins: Set<string>,
+  pins: ReadonlySet<string>,
 ): Comp[] {
   const hits = data.comps.filter((c) => {
     if (state.pinnedOnly && !pins.has(c.id)) return false;

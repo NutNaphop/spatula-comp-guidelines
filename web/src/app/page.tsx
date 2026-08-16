@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { CompCard } from "@/components/CompCard";
 import { CompDetail } from "@/components/CompDetail";
 import { FilterState, Filters } from "@/components/Filters";
+import { PinsBackup } from "@/components/PinsBackup";
 import { applyFilters } from "@/lib/comps";
 import { usePins } from "@/lib/pins";
 import { useArtifact } from "@/lib/useArtifact";
 
 export default function Home() {
   const state = useArtifact();
-  const { pins, toggle } = usePins();
+  const { pins, toggle, reload } = usePins();
 
   const [filters, setFilters] = useState<FilterState>({
     query: "",
@@ -19,6 +20,7 @@ export default function Home() {
     pinnedOnly: false,
   });
   const [openId, setOpenId] = useState<string | null>(null);
+  const [backupOpen, setBackupOpen] = useState(false);
 
   const data = state.status === "ready" ? state.data : null;
 
@@ -106,14 +108,28 @@ export default function Home() {
       </main>
 
       {data && (
-        <footer className="label px-3 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
-          {data.meta.version}-{data.meta.season} · {data.meta.comp_count} คอมพ์ ·{" "}
-          {data.meta.source_time?.slice(0, 10)}
+        <footer className="label flex items-center justify-center gap-3 px-3 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <span>
+            {data.meta.version}-{data.meta.season} · {data.meta.comp_count} คอมพ์ ·{" "}
+            {data.meta.source_time?.slice(0, 10)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setBackupOpen(true)}
+            className="label underline decoration-edge underline-offset-2 hover:text-chalk"
+          >
+            สำรองหมุด
+          </button>
         </footer>
+      )}
+
+      {backupOpen && (
+        <PinsBackup onDone={() => setBackupOpen(false)} onRestored={reload} />
       )}
 
       {open && data && (
         <CompDetail
+          key={open.id}
           comp={open}
           data={data}
           pinned={pins.has(open.id)}
