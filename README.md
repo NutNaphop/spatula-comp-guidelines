@@ -11,6 +11,12 @@ goldenspatula.com  →  fetch  →  clean  →  normalize  →  web/public/data/
                                           web UI / Android overlay / iOS Live Activity
 ```
 
+| โฟลเดอร์ | คืออะไร |
+|---|---|
+| `src/spatula/` | pipeline (Python) |
+| `web/` | เว็บแอป (Next.js) — UI ตัวจริงของทุกแพลตฟอร์ม |
+| `android/` | เปลือกปุ่มลอย (Kotlin) ที่ห่อ WebView |
+
 `comps.json` คือ **single source of truth** — client ทุกตัวคุยกับมันผ่าน HTTP
 อย่างเดียว ไม่ import โค้ดจาก pipeline เลย จึงแยก repo ได้โดยไม่ต้องแก้อะไร
 
