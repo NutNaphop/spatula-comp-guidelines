@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Artifact, costVar } from "@/lib/types";
 import { finalUnits } from "@/lib/comps";
-import { read } from "@/lib/active";
+import { useActiveCompId } from "@/lib/active";
 import { useArtifact } from "@/lib/useArtifact";
 
 /**
@@ -16,20 +15,7 @@ import { useArtifact } from "@/lib/useArtifact";
  */
 export function MiniStrip() {
   const state = useArtifact();
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setActiveId(read());
-    const onStorage = () => setActiveId(read());
-    window.addEventListener("storage", onStorage);
-    // the panel may write while this window is alive but not receiving
-    // storage events on some WebView versions, so re-check on focus too
-    window.addEventListener("focus", onStorage);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("focus", onStorage);
-    };
-  }, []);
+  const activeId = useActiveCompId();
 
   if (state.status !== "ready") return <Dot />;
   const data: Artifact = state.data;

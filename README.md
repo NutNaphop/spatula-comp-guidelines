@@ -40,6 +40,7 @@ python -m spatula.fetch && python -m spatula.clean && python -m spatula.normaliz
 ```bash
 cd web && npm install && npm run dev     # พัฒนา
 cd web && npm test                       # เทสต์ (29 ตัว)
+cd web && npm run verify                 # lint + test + build ชุดเดียวกับ CI
 cd web && npm run build                  # static export ออกที่ web/out/
 ```
 
@@ -48,6 +49,9 @@ type ของ artifact อยู่ที่ `web/src/lib/types.ts` และ�
 `config.SCHEMA_VERSION` เสมอ
 
 ถ้า deploy ใต้ sub-path ของ GitHub Pages ให้ตั้ง `NEXT_PUBLIC_BASE_PATH=/ชื่อ-repo`
+
+**รัน `npm run verify` ก่อน push เสมอ** — CI รัน lint ด้วย ซึ่งจับสิ่งที่ `build`
+ไม่จับ (เช่น setState ใน effect) ถ้ารันแต่ build จะผ่านในเครื่องแล้วไปพังบน CI
 
 ### หลักการออกแบบ
 

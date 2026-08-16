@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { CompCard } from "@/components/CompCard";
 import { CompDetail } from "@/components/CompDetail";
 import { FilterState, Filters } from "@/components/Filters";
@@ -13,11 +13,9 @@ import { useArtifact } from "@/lib/useArtifact";
 
 export default function Home() {
   // the collapsed overlay window loads the same export with ?view=mini,
-  // so both windows share one origin and therefore one localStorage
-  const [mini, setMini] = useState(false);
-  useEffect(() => {
-    setMini(new URLSearchParams(location.search).get("view") === "mini");
-  }, []);
+  // so both windows share one origin and therefore one localStorage. The URL
+  // is external to React and never changes here, hence the empty subscribe.
+  const mini = useSyncExternalStore(subscribeNever, readMiniFlag, () => false);
   if (mini) return <MiniStrip />;
   return <Browser />;
 }
@@ -156,6 +154,10 @@ function Browser() {
     </div>
   );
 }
+
+const subscribeNever = () => () => {};
+const readMiniFlag = () =>
+  new URLSearchParams(window.location.search).get("view") === "mini";
 
 function Notice({ children }: { children: React.ReactNode }) {
   return <p className="col-span-full px-3 py-16 text-center text-sm text-mute">{children}</p>;
