@@ -11,12 +11,16 @@ export function CompDetail({
   data,
   pinned,
   onTogglePin,
+  tracked,
+  onToggleTrack,
   onClose,
 }: {
   comp: Comp;
   data: Artifact;
   pinned: boolean;
   onTogglePin: () => void;
+  tracked: boolean;
+  onToggleTrack: () => void;
   onClose: () => void;
 }) {
   const levels = sortedLevels(comp);
@@ -53,6 +57,21 @@ export function CompDetail({
             .filter(Boolean)
             .join(" · ")}
         </p>
+
+        {/* the one action that changes what the overlay shows while playing,
+            so it sits above the board rather than at the end of the page */}
+        <button
+          type="button"
+          onClick={onToggleTrack}
+          aria-pressed={tracked}
+          className={`mt-3 w-full rounded-md border px-3 py-2 text-sm transition-colors ${
+            tracked
+              ? "border-cost-5 bg-cost-5/15 text-cost-5"
+              : "border-edge text-chalk hover:border-mute"
+          }`}
+        >
+          {tracked ? "กำลังติดตามคอมพ์นี้ — แตะเพื่อเลิก" : "ติดตามคอมพ์นี้"}
+        </button>
 
         {/* the board is the hero: first thing on screen, biggest thing on it */}
         <div className="mt-5">

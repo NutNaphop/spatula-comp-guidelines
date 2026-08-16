@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The bubble window is sized from here rather than from the composable:
-         WindowManager needs a concrete size, and a WRAP_CONTENT window would
+    <!-- The collapsed window is sized from here rather than from its content:
+         WindowManager needs concrete numbers, and a WRAP_CONTENT window would
          collapse the round background into a sliver. -->
+
+    <!-- nothing tracked: as small as it can be and still be hittable -->
     <dimen name="bubble_size">52dp</dimen>
+
+    <!-- tracking a comp: wide enough for ten faces on two rows, short enough
+         to sit above the board without covering it -->
+    <dimen name="strip_width">184dp</dimen>
+    <dimen name="strip_height">76dp</dimen>
 </resources>

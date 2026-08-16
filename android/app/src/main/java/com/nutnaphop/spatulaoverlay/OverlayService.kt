@@ -1,5 +1,6 @@
 package com.nutnaphop.spatulaoverlay
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -18,11 +19,13 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.WebView
+import android.widget.FrameLayout
 import androidx.compose.runtime.mutableStateOf
 import kotlin.math.abs
 
 /**
- * A floating bubble that expands into a WebView panel over the running game.
+ * A floating window over the running game. Collapsed it shows the comp being
+ * built; expanded it is the full browser.
  *
  * Two window flags carry most of the behaviour:
  *
@@ -34,21 +37,24 @@ import kotlin.math.abs
  *    would make the search box impossible to type into; leaving it clear
  *    would steal the keyboard and the back button from the game.
  *
- * The UI is Compose, hosted by [ComposeOverlayHost] because a Service cannot
- * supply the lifecycle owners Compose expects to find in the view tree.
+ * The collapsed window is a WebView showing the same site with ?view=mini.
+ * Keeping it web means the strip's layout lives beside the rest of the UI
+ * instead of being reimplemented in Compose.
  */
 class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
     private lateinit var prefs: SharedPreferences
 
-    private lateinit var bubbleHost: ComposeOverlayHost
-    private var panelHost: ComposeOverlayHost? = null
-    private var webView: WebView? = null
+    private var collapsedView: View? = null
+    private var collapsedWeb: WebView? = null
+    private lateinit var collapsedParams: WindowManager.LayoutParams
 
-    private lateinit var bubbleParams: WindowManager.LayoutParams
+    private var panelHost: ComposeOverlayHost? = null
+    private var panelWeb: WebView? = null
 
     private val mode = mutableStateOf(Mode.PINNED)
+    private var tracking = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -59,9 +65,10 @@ class OverlayService : Service() {
         mode.value = runCatching {
             Mode.valueOf(prefs.getString(Config.KEY_MODE, null) ?: "")
         }.getOrDefault(Mode.PINNED)
+        tracking = prefs.getBoolean(Config.KEY_TRACKING, false)
 
         startForeground(NOTIFICATION_ID, buildNotification())
-        addBubble()
+        addCollapsed()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -76,32 +83,71 @@ class OverlayService : Service() {
         super.onDestroy()
         CookieManager.getInstance().flush()
         collapse()
-        if (::bubbleHost.isInitialized) {
-            runCatching { windowManager.removeView(bubbleHost.view) }
-            bubbleHost.destroy()
-        }
+        removeCollapsed()
     }
 
-    // ---------------------------------------------------------------- bubble
+    // ------------------------------------------------------------- collapsed
 
-    private fun addBubble() {
-        bubbleHost = ComposeOverlayHost(this)
-        val view = bubbleHost.setContent { SpatulaTheme { Bubble() } }
-        view.setOnTouchListener(DragListener())
+    @SuppressLint("ClickableViewAccessibility")
+    private fun addCollapsed() {
+        val web = buildWebView(this).apply {
+            setBackgroundColor(0)
+            addJavascriptInterface(HostBridge(::onTrackingChanged), HostBridge.NAME)
+            loadUrl(Config.MINI_URL)
+        }
+        collapsedWeb = web
 
-        // Explicit square size, not WRAP_CONTENT: the window has to carry the
-        // size, or the round background renders as a sliver.
-        val size = resources.getDimensionPixelSize(R.dimen.bubble_size)
+        // A transparent lid over the WebView: the strip is read, never
+        // tapped, so the window consumes every touch itself and turns it into
+        // drag-to-move or tap-to-expand.
+        val lid = View(this)
+        lid.setOnTouchListener(DragListener())
 
-        bubbleParams = baseParams().apply {
-            width = size
-            height = size
+        val container = FrameLayout(this).apply {
+            addView(web, FrameLayout.LayoutParams(MATCH, MATCH))
+            addView(lid, FrameLayout.LayoutParams(MATCH, MATCH))
+        }
+        collapsedView = container
+
+        collapsedParams = baseParams().apply {
             gravity = Gravity.TOP or Gravity.START
             x = prefs.getInt(Config.KEY_BUBBLE_X, 0)
             y = prefs.getInt(Config.KEY_BUBBLE_Y, 240)
             flags = flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         }
-        windowManager.addView(view, bubbleParams)
+        applyCollapsedSize()
+        windowManager.addView(container, collapsedParams)
+    }
+
+    private fun removeCollapsed() {
+        collapsedView?.let { runCatching { windowManager.removeView(it) } }
+        collapsedWeb?.destroy()
+        collapsedView = null
+        collapsedWeb = null
+    }
+
+    /** A dot when nothing is tracked, a strip when something is. */
+    private fun applyCollapsedSize() {
+        collapsedParams.width = resources.getDimensionPixelSize(
+            if (tracking) R.dimen.strip_width else R.dimen.bubble_size
+        )
+        collapsedParams.height = resources.getDimensionPixelSize(
+            if (tracking) R.dimen.strip_height else R.dimen.bubble_size
+        )
+    }
+
+    /** Called from the web app's JS bridge, on a background thread. */
+    private fun onTrackingChanged(activeId: String?) {
+        val next = activeId != null
+        if (next == tracking) return
+        tracking = next
+        prefs.edit().putBoolean(Config.KEY_TRACKING, next).apply()
+
+        collapsedView?.post {
+            val view = collapsedView ?: return@post
+            applyCollapsedSize()
+            runCatching { windowManager.updateViewLayout(view, collapsedParams) }
+        }
     }
 
     /** Distinguishes a tap from a drag, and remembers where it was left. */
@@ -113,18 +159,19 @@ class OverlayService : Service() {
         private val slop = ViewConfiguration.get(this@OverlayService).scaledTouchSlop
 
         override fun onTouch(v: View, event: MotionEvent): Boolean {
+            val view = collapsedView ?: return false
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    startX = bubbleParams.x
-                    startY = bubbleParams.y
+                    startX = collapsedParams.x
+                    startY = collapsedParams.y
                     touchX = event.rawX
                     touchY = event.rawY
                     return true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    bubbleParams.x = startX + (event.rawX - touchX).toInt()
-                    bubbleParams.y = startY + (event.rawY - touchY).toInt()
-                    windowManager.updateViewLayout(bubbleHost.view, bubbleParams)
+                    collapsedParams.x = startX + (event.rawX - touchX).toInt()
+                    collapsedParams.y = startY + (event.rawY - touchY).toInt()
+                    windowManager.updateViewLayout(view, collapsedParams)
                     return true
                 }
                 MotionEvent.ACTION_UP -> {
@@ -132,8 +179,8 @@ class OverlayService : Service() {
                         abs(event.rawY - touchY) > slop
                     if (moved) {
                         prefs.edit()
-                            .putInt(Config.KEY_BUBBLE_X, bubbleParams.x)
-                            .putInt(Config.KEY_BUBBLE_Y, bubbleParams.y)
+                            .putInt(Config.KEY_BUBBLE_X, collapsedParams.x)
+                            .putInt(Config.KEY_BUBBLE_Y, collapsedParams.y)
                             .apply()
                     } else {
                         v.performClick()
@@ -151,7 +198,8 @@ class OverlayService : Service() {
     private fun expand() {
         if (panelHost != null) return
 
-        val web = buildWebView(this).also { webView = it }
+        val web = buildWebView(this).also { panelWeb = it }
+        web.addJavascriptInterface(HostBridge(::onTrackingChanged), HostBridge.NAME)
         web.loadUrl(mode.value.url)
 
         val host = ComposeOverlayHost(this)
@@ -174,8 +222,8 @@ class OverlayService : Service() {
         panelHost = host
 
         val params = baseParams().apply {
-            width = WindowManager.LayoutParams.MATCH_PARENT
-            height = WindowManager.LayoutParams.MATCH_PARENT
+            width = MATCH
+            height = MATCH
             gravity = Gravity.TOP or Gravity.START
             // focusable: the search box and any login form need a keyboard.
             // ADJUST_RESIZE is deprecated for activities in favour of the
@@ -187,7 +235,7 @@ class OverlayService : Service() {
         }
 
         windowManager.addView(view, params)
-        bubbleHost.view.visibility = View.GONE
+        collapsedView?.visibility = View.GONE
     }
 
     private fun collapse() {
@@ -196,9 +244,13 @@ class OverlayService : Service() {
         CookieManager.getInstance().flush()
         runCatching { windowManager.removeView(host.view) }
         host.destroy()
-        webView?.destroy()
-        webView = null
-        if (::bubbleHost.isInitialized) bubbleHost.view.visibility = View.VISIBLE
+        panelWeb?.destroy()
+        panelWeb = null
+
+        // the strip reads the tracked comp out of localStorage, which the
+        // panel may have just changed
+        collapsedWeb?.reload()
+        collapsedView?.visibility = View.VISIBLE
     }
 
     // ----------------------------------------------------------------- glue
@@ -243,5 +295,6 @@ class OverlayService : Service() {
         const val ACTION_STOP = "com.nutnaphop.spatulaoverlay.STOP"
         private const val CHANNEL_ID = "overlay"
         private const val NOTIFICATION_ID = 1
+        private const val MATCH = WindowManager.LayoutParams.MATCH_PARENT
     }
 }

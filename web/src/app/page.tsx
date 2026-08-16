@@ -5,12 +5,26 @@ import { CompCard } from "@/components/CompCard";
 import { CompDetail } from "@/components/CompDetail";
 import { FilterState, Filters } from "@/components/Filters";
 import { PinsBackup } from "@/components/PinsBackup";
+import { MiniStrip } from "@/components/MiniStrip";
+import { useActiveComp } from "@/lib/active";
 import { applyFilters } from "@/lib/comps";
 import { usePins } from "@/lib/pins";
 import { useArtifact } from "@/lib/useArtifact";
 
 export default function Home() {
+  // the collapsed overlay window loads the same export with ?view=mini,
+  // so both windows share one origin and therefore one localStorage
+  const [mini, setMini] = useState(false);
+  useEffect(() => {
+    setMini(new URLSearchParams(location.search).get("view") === "mini");
+  }, []);
+  if (mini) return <MiniStrip />;
+  return <Browser />;
+}
+
+function Browser() {
   const state = useArtifact();
+  const { active, track } = useActiveComp();
   const { pins, toggle, reload } = usePins();
 
   const [filters, setFilters] = useState<FilterState>({
@@ -134,6 +148,8 @@ export default function Home() {
           data={data}
           pinned={pins.has(open.id)}
           onTogglePin={() => toggle(open.id)}
+          tracked={active === open.id}
+          onToggleTrack={() => track(open.id)}
           onClose={() => history.back()}
         />
       )}
