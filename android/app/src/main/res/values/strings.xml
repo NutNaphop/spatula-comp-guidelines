@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Spatula Overlay</string>
+
+    <string name="status_ready">พร้อมใช้งาน — กดเริ่ม แล้วสลับไปเปิดเกมได้เลย</string>
+    <string name="status_need_permission">ต้องอนุญาตให้แสดงทับแอปอื่นก่อน</string>
+    <string name="grant">อนุญาตให้แสดงทับแอปอื่น</string>
+    <string name="start">เริ่มใช้งาน</string>
+    <string name="stop">ปิดปุ่มลอย</string>
+
+    <string name="channel_name">ปุ่มลอย</string>
+    <string name="notification_title">Spatula Overlay กำลังทำงาน</string>
+    <string name="notification_text">แตะปุ่มลอยเพื่อดูคอมพ์</string>
+
+    <string name="bubble_glyph">S</string>
+    <string name="bubble_description">เปิดรายการคอมพ์</string>
+    <string name="back_arrow">‹</string>
+    <string name="close_glyph">✕</string>
+</resources>

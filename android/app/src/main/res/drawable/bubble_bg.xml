@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <!-- the 5-cost gold from the web app, so the bubble reads as the same tool -->
+    <solid android:color="#E8B33C" />
+    <stroke android:width="2dp" android:color="#0B0F16" />
+</shape>
