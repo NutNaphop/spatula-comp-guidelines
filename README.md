@@ -92,7 +92,7 @@ type ของ artifact อยู่ที่ `web/src/lib/types.ts` และ�
 - เช็ค `robots.txt` ก่อนทุก URL (ตอนนี้เว็บไม่มีไฟล์นี้ = ไม่ห้ามอะไร)
 - Conditional GET (ETag) → รันซ้ำได้ 304 ไม่โหลดตัวไฟล์
 - หน่วง 2 วิ/request, cooldown 6 ชม./ไฟล์ (ข้ามด้วย `--force`)
-- **แก้อีเมลใน `config.USER_AGENT` เป็นของคุณก่อนใช้จริง**
+- `User-Agent` ระบุตัวตนว่าเป็นบอทอะไร แต่ไม่ใส่อีเมลไว้ในโค้ดที่เปิด public
 
 ## Validation
 

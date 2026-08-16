@@ -44,7 +44,7 @@ LINEUP_CHANNEL = "29"
 # hardcoded here on purpose.
 
 # --- politeness / fetch behaviour -------------------------------------------
-USER_AGENT = "spatula-comp-dataset/0.1 (personal research; contact: you@example.com)"
+USER_AGENT = "spatula-comp-dataset/0.1 (personal research)"
 REQUEST_DELAY_S = 2.0     # gap between requests within one run
 TIMEOUT_S = 30.0
 MAX_RETRIES = 3
