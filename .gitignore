@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# raw downloads + intermediates are reproducible, keep them out of git
+data/raw/
+data/clean/
+data/artifact/
+data/*.sqlite3
+
+# NOTE: web/data/comps.json is deliberately committed - its git history is
+# the cross-patch archive, and it only changes when upstream actually does.
