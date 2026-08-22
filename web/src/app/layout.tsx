@@ -39,6 +39,17 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="th" className={`${sans.variable} ${mono.variable}`}>
+      <head>
+        {/* Runs before the body is painted, which is the point: deciding this
+            in a React effect would show the dark page ground first and flash
+            a black square in a 52dp overlay window. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'if(location.search.indexOf("view=mini")>-1)document.documentElement.classList.add("mini")',
+          }}
+        />
+      </head>
       <body className="bg-ink text-chalk antialiased [overscroll-behavior:contain]">
         {children}
       </body>

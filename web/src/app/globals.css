@@ -43,6 +43,15 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* The collapsed overlay is a window floating over the game, not a page. It
+   has to paint its content and nothing else, or the page ground fills the
+   whole window and the gold dot arrives sitting on a black square.
+   The class is set before first paint, in the document head. */
+html.mini,
+html.mini body {
+  background: transparent;
+}
+
 /* Small mono labels read as instrument markings rather than prose. */
 .label {
   font-family: var(--font-mono);
