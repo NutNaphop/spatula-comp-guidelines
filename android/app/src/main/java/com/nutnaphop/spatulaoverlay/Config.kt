@@ -25,7 +25,14 @@ object Config {
     const val KEY_MODE = "mode"
     const val KEY_BUBBLE_X = "bubble_x"
     const val KEY_BUBBLE_Y = "bubble_y"
-    const val KEY_TRACKING = "tracking"
+    /** id of the comp being tracked, or absent. Kept across restarts so the
+     * collapsed window comes back the right size, and so tapping it opens
+     * that comp rather than the list. */
+    const val KEY_TRACKED = "tracked_id"
+
+    /** Straight to the comp being built. The web app reads `comp` from the
+     * URL, so the shell never has to know what a comp contains. */
+    fun compUrl(id: String): String = "$APP_URL?comp=${android.net.Uri.encode(id)}"
 
     /** Read at a glance next to a game, so start larger than the browser default. */
     const val TEXT_ZOOM = 115

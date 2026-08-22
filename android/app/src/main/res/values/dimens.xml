@@ -7,8 +7,10 @@
     <!-- nothing tracked: as small as it can be and still be hittable -->
     <dimen name="bubble_size">52dp</dimen>
 
-    <!-- tracking a comp: wide enough for ten faces on two rows, short enough
-         to sit above the board without covering it -->
-    <dimen name="strip_width">184dp</dimen>
-    <dimen name="strip_height">76dp</dimen>
+    <!-- tracking a comp: six 26dp faces per row, each with its items under
+         it. The biggest comp in the set is 11 units, so this is two rows -
+         a third row would cover the board, which is the one thing the
+         overlay must never do. -->
+    <dimen name="strip_width">192dp</dimen>
+    <dimen name="strip_height">84dp</dimen>
 </resources>

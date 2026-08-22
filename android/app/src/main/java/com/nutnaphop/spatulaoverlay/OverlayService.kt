@@ -40,6 +40,11 @@ import kotlin.math.abs
  * The collapsed window is a WebView showing the same site with ?view=mini.
  * Keeping it web means the strip's layout lives beside the rest of the UI
  * instead of being reimplemented in Compose.
+ *
+ * Tapping it expands. If a comp is being tracked, it expands straight onto
+ * that comp - mid-game the answer to "what did I tap this for" is almost
+ * always the comp already on the strip, and a list to scroll past is exactly
+ * the interruption the overlay exists to remove.
  */
 class OverlayService : Service() {
 
@@ -55,7 +60,10 @@ class OverlayService : Service() {
     private var panelWeb: WebView? = null
 
     private val mode = mutableStateOf(Mode.PINNED)
-    private var tracking = false
+
+    /** id of the comp being built, or null. Drives both the collapsed
+     * window's size and where a tap lands. */
+    private var tracked: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -66,7 +74,7 @@ class OverlayService : Service() {
         mode.value = runCatching {
             Mode.valueOf(prefs.getString(Config.KEY_MODE, null) ?: "")
         }.getOrDefault(Mode.PINNED)
-        tracking = prefs.getBoolean(Config.KEY_TRACKING, false)
+        tracked = prefs.getString(Config.KEY_TRACKED, null)
 
         startForeground(NOTIFICATION_ID, buildNotification())
         addCollapsed()
@@ -182,20 +190,22 @@ class OverlayService : Service() {
 
     /** A dot when nothing is tracked, a strip when something is. */
     private fun applyCollapsedSize() {
+        val on = tracked != null
         collapsedParams.width = resources.getDimensionPixelSize(
-            if (tracking) R.dimen.strip_width else R.dimen.bubble_size
+            if (on) R.dimen.strip_width else R.dimen.bubble_size
         )
         collapsedParams.height = resources.getDimensionPixelSize(
-            if (tracking) R.dimen.strip_height else R.dimen.bubble_size
+            if (on) R.dimen.strip_height else R.dimen.bubble_size
         )
     }
 
     /** Called from the web app's JS bridge, on a background thread. */
     private fun onTrackingChanged(activeId: String?) {
-        val next = activeId != null
-        if (next == tracking) return
-        tracking = next
-        prefs.edit().putBoolean(Config.KEY_TRACKING, next).apply()
+        if (activeId == tracked) return
+        val resize = (activeId != null) != (tracked != null)
+        tracked = activeId
+        prefs.edit().putString(Config.KEY_TRACKED, activeId).apply()
+        if (!resize) return
 
         collapsedView?.post {
             val view = collapsedView ?: return@post
@@ -254,7 +264,7 @@ class OverlayService : Service() {
 
         val web = buildWebView(this).also { panelWeb = it }
         web.addJavascriptInterface(HostBridge(::onTrackingChanged), HostBridge.NAME)
-        web.loadUrl(mode.value.url)
+        web.loadUrl(landingUrl())
 
         val host = ComposeOverlayHost(this)
         val view = host.setContent {
@@ -266,6 +276,8 @@ class OverlayService : Service() {
                         mode.value =
                             if (mode.value == Mode.PINNED) Mode.OFFICIAL else Mode.PINNED
                         prefs.edit().putString(Config.KEY_MODE, mode.value.name).apply()
+                        // switching modes is asking for the other library, so
+                        // it lands on the list rather than back on the comp
                         web.loadUrl(mode.value.url)
                     },
                     onBack = { if (web.canGoBack()) web.goBack() },
@@ -305,6 +317,13 @@ class OverlayService : Service() {
         // panel may have just changed
         collapsedWeb?.reload()
         collapsedView?.visibility = View.VISIBLE
+    }
+
+    /** The tracked comp if there is one, otherwise whichever library the
+     * panel was last left on. */
+    private fun landingUrl(): String {
+        val id = tracked
+        return if (mode.value == Mode.PINNED && id != null) Config.compUrl(id) else mode.value.url
     }
 
     // ----------------------------------------------------------------- glue

@@ -3,10 +3,11 @@ package com.nutnaphop.spatulaoverlay
 import android.webkit.JavascriptInterface
 
 /**
- * The only thing that crosses from the web app into native code: whether a
- * comp is being tracked. The shell needs it to choose the collapsed window's
- * size - a dot when nothing is tracked, a strip when something is - and
- * nothing else, so the comp's contents stay rendered in one place.
+ * The only thing that crosses from the web app into native code: which comp
+ * is being tracked, if any. The shell needs it for two things - the collapsed
+ * window's size (a dot when nothing is tracked, a strip when something is)
+ * and which page to open when the strip is tapped - and nothing else, so the
+ * comp's contents stay rendered in one place.
  *
  * Injected only into our own page (see [Mode.PINNED]); never attach this to
  * the official site's WebView.

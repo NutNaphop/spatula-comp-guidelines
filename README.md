@@ -39,7 +39,7 @@ python -m spatula.fetch && python -m spatula.clean && python -m spatula.normaliz
 
 ```bash
 cd web && npm install && npm run dev     # พัฒนา
-cd web && npm test                       # เทสต์ (29 ตัว)
+cd web && npm test                       # เทสต์ (52 ตัว)
 cd web && npm run verify                 # lint + test + build ชุดเดียวกับ CI
 cd web && npm run build                  # static export ออกที่ web/out/
 ```
@@ -52,6 +52,17 @@ type ของ artifact อยู่ที่ `web/src/lib/types.ts` และ�
 
 **รัน `npm run verify` ก่อน push เสมอ** — CI รัน lint ด้วย ซึ่งจับสิ่งที่ `build`
 ไม่จับ (เช่น setState ใน effect) ถ้ารันแต่ build จะผ่านในเครื่องแล้วไปพังบน CI
+
+### คอมพ์ของฉัน
+
+สร้างคอมพ์เองได้ไม่จำกัด เก็บใน `localStorage` ของเครื่อง (ไม่มีบัญชี ไม่มีเซิร์ฟเวอร์)
+
+- id ขึ้นต้นด้วย `my:` และเก็บใน **รูปแบบ `Comp` เดียวกับ artifact** แล้ว merge เข้า
+  ลิสต์เดียวกัน — การ์ด/หน้ารายละเอียด/กระดาน/หมุด/แถบลอย จึงใช้โค้ดชุดเดิมทั้งหมด
+- แก้คอมพ์ทางการในที่เดิมไม่ได้ เพราะ `refresh.yml` เขียนทับ artifact ทุกแพทช์
+  จึงมี 2 ทาง: **"บันทึกเป็นของฉัน"** (เก็บสำเนาเลย) กับ **"คัดลอกไปแก้ไข"** (เปิดตัวแก้ไข)
+- เลเวลของคอมพ์ = จำนวนยูนิตบนกระดาน ไม่ต้องกรอก
+- **ไฟล์สำรองเป็น v2** (`{v, pins, comps}`) แต่ยังกู้คืนไฟล์ v1 (array ของ id) ได้
 
 ### หลักการออกแบบ
 
@@ -136,6 +147,16 @@ sqlite3 data/tft.sqlite3 "SELECT * FROM hero_usage LIMIT 10"
 สร้างใหม่ทุกครั้งจาก `comps.json` (ไม่ใช่ของที่แอปใช้ — แอปอ่าน JSON) มี view
 สำเร็จรูป 2 อัน: `hero_usage` (แชมป์ไหนถูกใช้บ่อย/เป็น carry บ่อย) และ
 `carry_items` (ไอเทมที่ลงตัว carry จริง)
+
+## overlay (Android)
+
+| สถานะ | สิ่งที่เห็น |
+|---|---|
+| ไม่ได้ติดตามคอมพ์ | จุดกลมสีทอง 52dp |
+| ติดตามคอมพ์อยู่ | แถบ 192×84dp — หน้าตัวละคร 26dp พร้อมไอเทมใต้ตัว สูงสุด 2 แถว |
+
+แตะแถบ = เปิดคอมพ์ที่ติดตามอยู่ทันที (`?comp=<id>`) ไม่ต้องเลื่อนหาในลิสต์
+เปลือก Android รู้แค่ **id** ที่ web ส่งผ่าน `SpatulaHost.onActiveComp` เท่านั้น
 
 ## ยังไม่ได้ทำ
 

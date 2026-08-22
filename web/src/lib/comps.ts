@@ -1,4 +1,4 @@
-import { Artifact, Comp, Unit } from "./types";
+import { Artifact, Comp, Unit, isMine } from "./types";
 import type { FilterState } from "@/components/Filters";
 
 /** The board the comp is aiming for - what the card previews. */
@@ -40,6 +40,7 @@ export function applyFilters(
 ): Comp[] {
   const hits = data.comps.filter((c) => {
     if (state.pinnedOnly && !pins.has(c.id)) return false;
+    if (state.mineOnly && !isMine(c.id)) return false;
     if (state.tiers.size && (!c.tier || !state.tiers.has(c.tier))) return false;
     if (state.tags.size && !c.tags.some((t) => state.tags.has(t))) return false;
     return matchesQuery(c, state.query, data);

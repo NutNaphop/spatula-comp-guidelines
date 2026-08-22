@@ -13,6 +13,9 @@ export function CompDetail({
   onTogglePin,
   tracked,
   onToggleTrack,
+  mine,
+  onSaveCopy,
+  onEdit,
   onClose,
 }: {
   comp: Comp;
@@ -21,6 +24,12 @@ export function CompDetail({
   onTogglePin: () => void;
   tracked: boolean;
   onToggleTrack: () => void;
+  /** written on this device, so it can be changed in place */
+  mine: boolean;
+  /** keeps a copy of a published comp without opening the editor */
+  onSaveCopy: () => void;
+  /** edits a comp of your own, or a fresh copy of a published one */
+  onEdit: () => void;
   onClose: () => void;
 }) {
   const levels = sortedLevels(comp);
@@ -53,7 +62,11 @@ export function CompDetail({
           <h1 className="text-xl font-bold tracking-tight">{comp.name}</h1>
         </div>
         <p className="label mt-1">
-          {[...comp.tags.map((t) => data.tags[t]).filter(Boolean), comp.author]
+          {[
+            mine ? "ของฉัน" : null,
+            ...comp.tags.map((t) => data.tags[t]),
+            comp.author,
+          ]
             .filter(Boolean)
             .join(" · ")}
         </p>
@@ -72,6 +85,38 @@ export function CompDetail({
         >
           {tracked ? "กำลังติดตามคอมพ์นี้ — แตะเพื่อเลิก" : "ติดตามคอมพ์นี้"}
         </button>
+
+        {/* A published comp is never edited in place: both of these keep a
+            copy, so the artifact stays the artifact and the refresh job can
+            keep overwriting it. Two buttons because keeping a comp and
+            changing a comp are different intentions, and making the first one
+            go through the editor would charge for the second. */}
+        {mine ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="label mt-2 w-full rounded-md border border-edge px-3 py-2 hover:text-chalk"
+          >
+            แก้ไขคอมพ์นี้
+          </button>
+        ) : (
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={onSaveCopy}
+              className="label flex-1 rounded-md border border-edge px-3 py-2 hover:text-chalk"
+            >
+              บันทึกเป็นของฉัน
+            </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="label flex-1 rounded-md border border-edge px-3 py-2 hover:text-chalk"
+            >
+              คัดลอกไปแก้ไข
+            </button>
+          </div>
+        )}
 
         {/* the board is the hero: first thing on screen, biggest thing on it */}
         <div className="mt-5">

@@ -17,6 +17,7 @@ function filters(over: Partial<FilterState> = {}): FilterState {
     tiers: new Set<string>(),
     tags: new Set<string>(),
     pinnedOnly: false,
+    mineOnly: false,
     ...over,
   };
 }
@@ -63,6 +64,16 @@ describe("applyFilters", () => {
 
   it("returns nothing when pinnedOnly is set with no pins", () => {
     expect(applyFilters(data, filters({ pinnedOnly: true }), new Set())).toEqual([]);
+  });
+
+  it("restricts to own comps when mineOnly is set", () => {
+    const withOwn = { ...data, comps: [{ ...data.comps[0], id: "my:1" }, ...data.comps] };
+    expect(ids(applyFilters(withOwn, filters({ mineOnly: true }), new Set())))
+      .toEqual(["my:1"]);
+  });
+
+  it("returns nothing when mineOnly is set and nothing was written here", () => {
+    expect(applyFilters(data, filters({ mineOnly: true }), new Set())).toEqual([]);
   });
 
   it("combines the query with the facets", () => {

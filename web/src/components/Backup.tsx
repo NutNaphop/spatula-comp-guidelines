@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { exportPins, importPins } from "@/lib/pins";
+import { exportAll, importAll } from "@/lib/backup";
 
-/** Pins live only in this device's storage, and iOS evicts web storage for
- * sites that go unused. This is the way back.
+/** Pins and the comps you wrote live only in this device's storage, and iOS
+ * evicts web storage for sites that go unused. This is the way back.
  *
  * Deliberately a text box rather than a file download: downloads are awkward
  * inside an Android WebView and a home-screen web app, while select-all and
  * paste work everywhere. */
-export function PinsBackup({
+export function Backup({
   onDone,
   onRestored,
 }: {
@@ -17,7 +17,7 @@ export function PinsBackup({
   onRestored: () => void;
 }) {
   const [tab, setTab] = useState<"backup" | "restore">("backup");
-  const [text, setText] = useState(() => exportPins());
+  const [text, setText] = useState(() => exportAll());
   const [message, setMessage] = useState<string | null>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -25,7 +25,7 @@ export function PinsBackup({
   // effect would render twice and blank the box for a frame
   const switchTab = (next: "backup" | "restore") => {
     setTab(next);
-    setText(next === "backup" ? exportPins() : "");
+    setText(next === "backup" ? exportAll() : "");
     setMessage(null);
   };
 
@@ -37,9 +37,9 @@ export function PinsBackup({
 
   const restore = () => {
     try {
-      const n = importPins(text);
+      const { pins, comps } = importAll(text);
       onRestored();
-      setMessage(`กู้คืนแล้ว ${n} คอมพ์`);
+      setMessage(`กู้คืนแล้ว — หมุด ${pins} · คอมพ์ของฉัน ${comps}`);
     } catch {
       setMessage("อ่านไฟล์สำรองไม่ได้ ตรวจว่าวางข้อความครบทั้งก้อนหรือยัง");
     }
@@ -67,7 +67,7 @@ export function PinsBackup({
 
         <p className="mb-2 text-xs text-mute">
           {tab === "backup"
-            ? "คัดลอกข้อความนี้เก็บไว้ ถ้าเครื่องล้างข้อมูลเว็บ ให้เอามาวางในแท็บกู้คืน"
+            ? "คัดลอกข้อความนี้เก็บไว้ ในนี้มีทั้งหมุดและคอมพ์ที่คุณสร้างเอง ถ้าเครื่องล้างข้อมูลเว็บ ให้เอามาวางในแท็บกู้คืน"
             : "วางข้อความที่สำรองไว้ แล้วกดกู้คืน รายการเดิมจะไม่ถูกลบ"}
         </p>
 

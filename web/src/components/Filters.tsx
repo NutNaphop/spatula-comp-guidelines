@@ -7,6 +7,8 @@ export interface FilterState {
   tiers: Set<string>;
   tags: Set<string>;
   pinnedOnly: boolean;
+  /** comps the player wrote themselves */
+  mineOnly: boolean;
 }
 
 /** Chips are outlined, never filled: a filled chip would read as loud as a
@@ -44,6 +46,7 @@ export function Filters({
   onChange,
   onToggle,
   onClear,
+  onCreate,
   resultCount,
 }: {
   data: Artifact;
@@ -53,12 +56,17 @@ export function Filters({
    * computing the next Set from props here drops the first one. */
   onToggle: (facet: "tiers" | "tags", id: string) => void;
   onClear: () => void;
+  onCreate: () => void;
   resultCount: number;
 }) {
   const tiers = [...new Set(data.comps.map((c) => c.tier).filter((t): t is string => !!t))]
     .sort();
 
-  const active = state.tiers.size + state.tags.size + (state.pinnedOnly ? 1 : 0);
+  const active =
+    state.tiers.size +
+    state.tags.size +
+    (state.pinnedOnly ? 1 : 0) +
+    (state.mineOnly ? 1 : 0);
 
   return (
     <div className="flex flex-col gap-2">
@@ -81,9 +89,26 @@ export function Filters({
         >
           {state.pinnedOnly ? "★" : "☆"}
         </button>
+        <button
+          type="button"
+          onClick={onCreate}
+          title="สร้างคอมพ์ของฉัน"
+          className="flex-none rounded-md bg-slate px-3 text-lg leading-none text-mute transition-colors hover:text-chalk"
+        >
+          +
+        </button>
       </div>
 
       <div className="rail flex gap-1.5 overflow-x-auto">
+        {/* first in the rail because it is the shortest path to the comps
+            only this device has */}
+        <Chip
+          active={state.mineOnly}
+          onClick={() => onChange({ mineOnly: !state.mineOnly })}
+        >
+          ของฉัน
+        </Chip>
+        <span aria-hidden className="my-1 w-px flex-none bg-edge" />
         {tiers.map((t) => (
           <Chip
             key={t}

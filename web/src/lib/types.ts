@@ -102,6 +102,15 @@ export interface Artifact {
   comps: Comp[];
 }
 
+/** Comps the player built themselves carry this prefix, so one id space
+ * covers both the published artifact and local storage and every component
+ * that renders a Comp keeps working without knowing where it came from. */
+export const MY_PREFIX = "my:";
+
+export function isMine(id: string): boolean {
+  return id.startsWith(MY_PREFIX);
+}
+
 export const BOARD_ROWS = 4;
 export const BOARD_COLS = 7;
 
