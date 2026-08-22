@@ -9,6 +9,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
@@ -74,6 +75,8 @@ class OverlayService : Service() {
         mode.value = runCatching {
             Mode.valueOf(prefs.getString(Config.KEY_MODE, null) ?: "")
         }.getOrDefault(Mode.PINNED)
+        // only a first guess at the window size: the page announces what it
+        // actually rendered as soon as it loads, and that wins
         tracked = prefs.getString(Config.KEY_TRACKED, null)
 
         startForeground(NOTIFICATION_ID, buildNotification())
@@ -197,6 +200,33 @@ class OverlayService : Service() {
         collapsedParams.height = resources.getDimensionPixelSize(
             if (on) R.dimen.strip_height else R.dimen.bubble_size
         )
+        clampToScreen()
+    }
+
+    /**
+     * Keeps the window reachable. FLAG_NOT_TOUCH_MODAL plus FLAG_LAYOUT_NO_LIMITS
+     * means the system will happily place it past the edge of the display and
+     * leave it there, with nothing on screen to drag it back by.
+     *
+     * Three things move it out of reach: dragging it off, rotating the screen,
+     * and growing from a 52dp dot into a 192dp strip under a position that was
+     * saved while it was still a dot.
+     */
+    private fun clampToScreen() {
+        val metrics = resources.displayMetrics
+        val maxX = (metrics.widthPixels - collapsedParams.width).coerceAtLeast(0)
+        val maxY = (metrics.heightPixels - collapsedParams.height).coerceAtLeast(0)
+        collapsedParams.x = collapsedParams.x.coerceIn(0, maxX)
+        collapsedParams.y = collapsedParams.y.coerceIn(0, maxY)
+    }
+
+    /** Rotation changes what "on screen" means, so the window is put back
+     * inside the new bounds rather than left in the old ones. */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val view = collapsedView ?: return
+        applyCollapsedSize()
+        runCatching { windowManager.updateViewLayout(view, collapsedParams) }
     }
 
     /** Called from the web app's JS bridge, on a background thread. */
@@ -235,6 +265,7 @@ class OverlayService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     collapsedParams.x = startX + (event.rawX - touchX).toInt()
                     collapsedParams.y = startY + (event.rawY - touchY).toInt()
+                    clampToScreen()
                     windowManager.updateViewLayout(view, collapsedParams)
                     return true
                 }

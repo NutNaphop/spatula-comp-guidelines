@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Artifact, costVar } from "@/lib/types";
 import { displayOrder, finalUnits } from "@/lib/comps";
 import { useActiveCompId } from "@/lib/active";
@@ -27,6 +27,28 @@ export function MiniStrip() {
   );
 
   const comp = data?.comps.find((c) => c.id === activeId) ?? null;
+
+  /**
+   * Tell the shell what is actually on screen.
+   *
+   * The shell sizes its window from this - a dot or a strip - and it used to
+   * keep its own copy of the answer in SharedPreferences, which is one fact
+   * stored in two places. They drift: storage here survives a reinstall while
+   * the shell's copy does not, and then a strip renders inside a window sized
+   * for a dot. So the shell is told on every load, not only when the player
+   * taps track, and this side stays the one that decides.
+   *
+   * It reports the comp, not the stored id: an id left over from a comp that
+   * was deleted, or dropped by a patch, renders as a dot and has to be
+   * measured as one. Nothing is reported until the artifact has settled,
+   * because "still loading" is not "nothing tracked".
+   */
+  const settled = state.status !== "loading";
+  useEffect(() => {
+    if (!settled) return;
+    window.SpatulaHost?.onActiveComp?.(comp?.id ?? null);
+  }, [settled, comp]);
+
   if (!data || !comp) return <Dot />;
 
   const units = displayOrder(finalUnits(comp), data);
